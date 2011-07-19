@@ -1,0 +1,26 @@
+PATH
+  remote: .
+  specs:
+    ipc-msgq (0.0.0)
+
+GEM
+  remote: http://rubygems.org/
+  specs:
+    changelog (0.8)
+    diff-lcs (1.1.2)
+    rspec (2.2.0)
+      rspec-core (~> 2.2)
+      rspec-expectations (~> 2.2)
+      rspec-mocks (~> 2.2)
+    rspec-core (2.6.4)
+    rspec-expectations (2.6.0)
+      diff-lcs (~> 1.1.2)
+    rspec-mocks (2.6.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  changelog
+  ipc-msgq!
+  rspec (~> 2.2.0)
