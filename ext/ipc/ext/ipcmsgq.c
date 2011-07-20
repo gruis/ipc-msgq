@@ -9,9 +9,17 @@
  *  Ipc::MsgQ.msgctl(Ipc::MsgQ.msgget(Ipc::MsgQ.ftok("/tmp/actors/caleb.stuff"), 0644 | Ipc::MsgQ::IPC_CREAT), Ipc::MsgQ::IPC_RMID)
  * @example
  *  Ipc::MsgQ.msgctl(Ipc::MsgQ.msgget(0x210202a1, Ipc::MsgQ::IPC_CREAT), Ipc::MsgQ::IPC_RMID)
- # @example
- #  Ipc::MsgQ.bytes(q, 1024)
+ * @example
+ *  Ipc::MsgQ.bytes(q, 1024)
  */
+
+#define RB_IPC_MSGQ_MAXBYTES    2047 /* maximum length of a message */
+
+struct rb_ipc_msg_entry {
+    long mtype;
+    char mtext[RB_IPC_MSGQ_MAXBYTES];
+};
+ 
 static VALUE
 rb_ipc_msgq_ftok(int argc, VALUE* argv, VALUE self)
 {
@@ -116,6 +124,47 @@ rb_ipc_msgq_set_bytes(VALUE self, VALUE v_qid, VALUE v_bytes)
     return Qnil;    
 }
 
+static VALUE
+rb_ipc_msgq_msgsnd(VALUE self, VALUE v_qid, VALUE v_msg)
+{
+    long len;
+    char* msg;
+    struct rb_ipc_msg_entry s_entry;
+
+    msg = RSTRING_PTR(v_msg);
+    
+    if( (len = strlen(msg)) > RB_IPC_MSGQ_MAXBYTES)
+        rb_raise(rb_eArgError,"msg is too big; maximum is %d", RB_IPC_MSGQ_MAXBYTES);
+    
+    /* @todo support different types and use them to truncate messages as necessary */
+    s_entry.mtype = (long)8;
+    /*strncpy(s_entry.mtext, msg, RB_IPC_MSGQ_MAXBYTES);*/
+    strcpy(s_entry.mtext, msg);
+    if( msgsnd((key_t)NUM2INT(v_qid), &s_entry, len, 0) == -1 )
+        rb_sys_fail("message not sent");
+    return INT2NUM(len);
+}
+
+static VALUE
+rb_ipc_msgq_msgsnd_nowait(VALUE self, VALUE v_qid, VALUE v_msg)
+{
+    long len;
+    char* msg;
+    struct rb_ipc_msg_entry s_entry;
+
+    msg = RSTRING_PTR(v_msg);
+    
+    if( (len = strlen(msg)) > RB_IPC_MSGQ_MAXBYTES)
+        rb_raise(rb_eArgError,"msg is too big; maximum is %d", RB_IPC_MSGQ_MAXBYTES);
+    
+    /* @todo support different types and use them to truncate messages as necessary */
+    s_entry.mtype = (long)8;
+    /*strncpy(s_entry.mtext, msg, RB_IPC_MSGQ_MAXBYTES);*/
+    strcpy(s_entry.mtext, msg);
+    if( msgsnd((key_t)NUM2INT(v_qid), &s_entry, len, IPC_NOWAIT) == -1 )
+        rb_sys_fail("message not sent");
+    return INT2NUM(len);
+}
 
 void
 Init_msgq()
@@ -130,6 +179,7 @@ Init_msgq()
     rb_define_const(rb_cIpcMsgQ, "IPC_STAT", INT2NUM(IPC_STAT));
     rb_define_const(rb_cIpcMsgQ, "IPC_SET", INT2NUM(IPC_SET));
     rb_define_const(rb_cIpcMsgQ, "IPC_RMID", INT2NUM(IPC_RMID));
+    rb_define_const(rb_cIpcMsgQ, "IPC_MAXLEN", INT2NUM(RB_IPC_MSGQ_MAXBYTES));
     rb_define_singleton_method(rb_cIpcMsgQ, "ftok", rb_ipc_msgq_ftok, -1);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgget", rb_ipc_msgq_msgget, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgctl", rb_ipc_msgq_msgctl, -1);
@@ -137,4 +187,6 @@ Init_msgq()
     rb_define_singleton_method(rb_cIpcMsgQ, "count", rb_ipc_msgq_count, 1);
     rb_define_singleton_method(rb_cIpcMsgQ, "mode", rb_ipc_msgq_set_mode, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "bytes", rb_ipc_msgq_set_bytes, 2);
+    rb_define_singleton_method(rb_cIpcMsgQ, "msgsnd", rb_ipc_msgq_msgsnd, 2);
+    rb_define_singleton_method(rb_cIpcMsgQ, "msgsnd_nowait", rb_ipc_msgq_msgsnd_nowait, 2);
 }
