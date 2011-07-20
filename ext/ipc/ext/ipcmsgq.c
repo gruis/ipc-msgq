@@ -38,7 +38,7 @@ rb_ipc_msgq_msgget(VALUE self, VALUE v_kid, VALUE v_flags)
 {
     int q;
     if( (q = msgget(NUM2INT(v_kid), NUM2INT(v_flags))) == -1 )
-        rb_sys_fail("message queue already exists");
+        rb_sys_fail("message queue not found, or alredy exists");
     return INT2NUM( q );
 }
 
@@ -52,6 +52,15 @@ rb_ipc_msgq_msgctl(int argc, VALUE* argv, VALUE self)
     if(msgctl((key_t)NUM2INT(v_id), NUM2INT(v_cmd), &msq_stat) == -1)
         rb_sys_fail("msgctl failed");
 
+    return Qnil;
+}
+
+static VALUE
+rb_ipc_msgq_delete(VALUE self, VALUE v_qid)
+{
+    struct msqid_ds msq_stat;
+    if(msgctl((key_t)NUM2INT(v_qid), IPC_RMID, &msq_stat) == -1)
+        rb_sys_fail("failed to delete queue");
     return Qnil;
 }
 
@@ -138,8 +147,8 @@ rb_ipc_msgq_msgsnd(VALUE self, VALUE v_qid, VALUE v_msg)
     
     /* @todo support different types and use them to truncate messages as necessary */
     s_entry.mtype = (long)8;
-    /*strncpy(s_entry.mtext, msg, RB_IPC_MSGQ_MAXBYTES);*/
-    strcpy(s_entry.mtext, msg);
+    strncpy(s_entry.mtext, msg, RB_IPC_MSGQ_MAXBYTES);
+    /*strcpy(s_entry.mtext, msg);*/
     if( msgsnd((key_t)NUM2INT(v_qid), &s_entry, len, 0) == -1 )
         rb_sys_fail("message not sent");
     return INT2NUM(len);
@@ -166,6 +175,27 @@ rb_ipc_msgq_msgsnd_nowait(VALUE self, VALUE v_qid, VALUE v_msg)
     return INT2NUM(len);
 }
 
+static VALUE
+rb_ipc_msgq_msgrcv(VALUE self, VALUE v_qid)
+{
+    struct rb_ipc_msg_entry r_entry;
+    
+    if((msgrcv((key_t)NUM2INT(v_qid), &r_entry, RB_IPC_MSGQ_MAXBYTES, 0, 0)) == -1)
+        rb_sys_fail("msgrcv failed");
+    return rb_str_new2(r_entry.mtext);
+}
+
+static VALUE
+rb_ipc_msgq_msgrcv_nowait(VALUE self, VALUE v_qid)
+{
+    struct rb_ipc_msg_entry r_entry;
+    
+    if((msgrcv((key_t)NUM2INT(v_qid), &r_entry, RB_IPC_MSGQ_MAXBYTES, 0, IPC_NOWAIT)) == -1)
+        rb_sys_fail("msgrcv failed");
+    return rb_str_new2(r_entry.mtext);
+}
+
+
 void
 Init_msgq()
 {
@@ -183,10 +213,13 @@ Init_msgq()
     rb_define_singleton_method(rb_cIpcMsgQ, "ftok", rb_ipc_msgq_ftok, -1);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgget", rb_ipc_msgq_msgget, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgctl", rb_ipc_msgq_msgctl, -1);
+    rb_define_singleton_method(rb_cIpcMsgQ, "delete", rb_ipc_msgq_delete, 1);
     rb_define_singleton_method(rb_cIpcMsgQ, "status", rb_ipc_msgq_status, 1);
     rb_define_singleton_method(rb_cIpcMsgQ, "count", rb_ipc_msgq_count, 1);
     rb_define_singleton_method(rb_cIpcMsgQ, "mode", rb_ipc_msgq_set_mode, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "bytes", rb_ipc_msgq_set_bytes, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgsnd", rb_ipc_msgq_msgsnd, 2);
     rb_define_singleton_method(rb_cIpcMsgQ, "msgsnd_nowait", rb_ipc_msgq_msgsnd_nowait, 2);
+    rb_define_singleton_method(rb_cIpcMsgQ, "msgrcv", rb_ipc_msgq_msgrcv, 1);
+    rb_define_singleton_method(rb_cIpcMsgQ, "msgrcv_nowait", rb_ipc_msgq_msgrcv_nowait, 1);
 }
