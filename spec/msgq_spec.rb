@@ -10,6 +10,7 @@ describe Ipc::MsgQ do
   end # describe "VERSION"
 
   it { Ipc::MsgQ.should respond_to(:ftok) }
+
   describe ".ftok" do
     it "should return a Fixnum on success" do
       Ipc::MsgQ.ftok(File.expand_path(__FILE__), 1).should be_a Fixnum
@@ -34,4 +35,14 @@ describe Ipc::MsgQ do
       Ipc::MsgQ.ftok(File.expand_path(__FILE__),7).should_not == Ipc::MsgQ.ftok(File.expand_path(__FILE__))
     end # it should return different keys when the id is different  
   end # ".ftok"
+
+  describe ".msgget" do
+    it "should return a q id"
+    it "should accpet IPC_CREAT and IPC_EXCL"  
+  end # ".msgget"
+  
+  describe ".status" do
+    it "should return a hash"
+    it "should have :count, :len, :lspid, :lrpid, :lstime, :rtime and :ctime"
+  end # ".status"
 end # describe Ipc::MsgQ
